@@ -1,0 +1,44 @@
+{
+    "name": "sgoranov/php-identity-link-shared",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "ext-ctype": "*",
+        "ext-iconv": "*",
+        "symfony/framework-bundle": "6.4.*",
+        "symfony/serializer": "6.4.*",
+        "symfony/runtime": "6.4.*",
+        "doctrine/orm": "2.*",
+        "symfony/validator": "6.4.*",
+        "firebase/php-jwt": "^6.10",
+        "nyholm/psr7": "^1.8",
+        "symfony/security-bundle": "6.4.*",
+        "psr/http-client": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "sgoranov\\PHPIdentityLinkShared\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "sgoranov\\PHPIdentityLinkShared\\Tests\\": "tests/"
+        }
+    },
+    "conflict": {
+        "symfony/symfony": "*"
+    },
+    "extra": {
+        "symfony": {
+            "allow-contrib": false,
+            "require": "6.4.*"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/flex": false,
+            "symfony/runtime": false
+        }
+    }
+}
