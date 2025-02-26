@@ -35,6 +35,40 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
         $this->adminRole = $adminRole;
     }
 
+    public static function decode($accessToken, $keySet): object
+    {
+        try {
+            $decoded = JWT::decode($accessToken, $keySet);
+
+            // Get the current time
+            $currentTime = time();
+
+            // Check 'iat' claim
+            if (isset($decoded->iat) && (int) $decoded->iat > $currentTime) {
+                throw new BadCredentialsException('JWT token is not yet valid.');
+            }
+
+            // Check 'nbf' claim
+            if (isset($decoded->nbf) && (int) $decoded->nbf > $currentTime) {
+                throw new BadCredentialsException('JWT token is not yet valid.');
+            }
+
+            // Check 'exp' claim
+            if (isset($decoded->exp) && (int) $decoded->exp < $currentTime) {
+                throw new BadCredentialsException('JWT token has expired.');
+            }
+
+            return $decoded;
+
+        } catch (\LogicException $e) {
+            // errors having to do with environmental setup or malformed JWT Keys
+            throw new BadCredentialsException('Invalid credentials.');
+        } catch (\UnexpectedValueException $e) {
+            // errors having to do with JWT signature and claims
+            throw new BadCredentialsException('Invalid credentials.');
+        }
+    }
+
     public function getUserBadgeFrom(#[\SensitiveParameter] string $accessToken): UserBadge
     {
         $cache = new FilesystemAdapter(
@@ -59,51 +93,30 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
             true  // $rateLimit    true to enable rate limit of 10 RPS on lookup of invalid keys
         );
 
-        try {
-            $decoded = JWT::decode($accessToken, $keySet);
+        $decoded = $this->decode($accessToken, $keySet);
 
-            // Get the current time
-            $currentTime = time();
-
-            // Check 'iat' claim
-            if (isset($decoded->iat) && $decoded->iat > $currentTime) {
-                throw new BadCredentialsException('JWT token is not yet valid.');
-            }
-
-            // Check 'nbf' claim
-            if (isset($decoded->nbf) && $decoded->nbf > $currentTime) {
-                throw new BadCredentialsException('JWT token is not yet valid.');
-            }
-
-            // Check 'exp' claim
-            if (isset($decoded->exp) && $decoded->exp < $currentTime) {
-                throw new BadCredentialsException('JWT token has expired.');
-            }
-
-            if ($this->issuer !== $decoded->iss) {
-                throw new BadCredentialsException('JWT iss is not valid.');
-            }
-
-            $groups = [];
-            if (isset($decoded->{$this->groupsClaim})) {
-                $groups = explode(' ', $decoded->{$this->groupsClaim});
-            }
-
-            // Create user badge
-            return new UserBadge($decoded->sub, function (string $userIdentifier, array $attribs): ?UserInterface {
-                if (in_array($this->adminRole, $attribs['groups'], true)) {
-                    return new User($userIdentifier, ['ROLE_ADMIN']);
-                } else {
-                    return new User($userIdentifier, []);
-                }
-            }, ['groups' => $groups]);
-
-        } catch (\LogicException $e) {
-            // errors having to do with environmental setup or malformed JWT Keys
-            throw new BadCredentialsException('Invalid credentials.');
-        } catch (\UnexpectedValueException $e) {
-            // errors having to do with JWT signature and claims
-            throw new BadCredentialsException('Invalid credentials.');
+        if (isset($decoded->iss) && $this->issuer !== $decoded->iss) {
+            throw new BadCredentialsException('JWT iss is not valid.');
         }
+
+        $groups = [];
+        if (isset($decoded->{$this->groupsClaim})) {
+            $groups = $decoded->{$this->groupsClaim};
+        }
+
+        if (!empty($decoded->sub)) {
+            $identifier = $decoded->sub;
+        } else {
+            $identifier = $decoded->aud;
+        }
+
+        // Create user badge
+        return new UserBadge($identifier, function (string $userIdentifier, array $attribs): ?UserInterface {
+            if (in_array($this->adminRole, $attribs['groups'], true)) {
+                return new User($userIdentifier, ['ROLE_ADMIN']);
+            } else {
+                return new User($userIdentifier, []);
+            }
+        }, ['groups' => $groups]);
     }
 }
