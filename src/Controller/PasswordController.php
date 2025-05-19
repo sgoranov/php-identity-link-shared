@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Controller;
+namespace sgoranov\IdentityLinkShared\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

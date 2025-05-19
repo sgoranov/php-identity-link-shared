@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\EventListener;
+namespace sgoranov\IdentityLinkShared\EventListener;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\File\Exception\AccessDeniedException;

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Serializer;
+namespace sgoranov\IdentityLinkShared\Serializer;
 
 use Psr\Log\LoggerInterface;
-use sgoranov\PHPIdentityLinkShared\Serializer\Exception\InvalidUuidException;
+use sgoranov\IdentityLinkShared\Serializer\Exception\InvalidUuidException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;

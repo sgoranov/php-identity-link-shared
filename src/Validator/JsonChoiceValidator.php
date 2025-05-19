@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Validator;
+namespace sgoranov\IdentityLinkShared\Validator;
 
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;

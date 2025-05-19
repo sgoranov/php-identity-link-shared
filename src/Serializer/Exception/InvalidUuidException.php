@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Serializer\Exception;
+namespace sgoranov\IdentityLinkShared\Serializer\Exception;
 
 
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;

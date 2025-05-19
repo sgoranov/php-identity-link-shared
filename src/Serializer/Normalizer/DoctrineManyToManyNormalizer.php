@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Serializer\Normalizer;
+namespace sgoranov\IdentityLinkShared\Serializer\Normalizer;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\PersistentCollection;
-use sgoranov\PHPIdentityLinkShared\Serializer\Exception\InvalidUuidException;
+use sgoranov\IdentityLinkShared\Serializer\Exception\InvalidUuidException;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 

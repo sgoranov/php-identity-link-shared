@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Controller;
+namespace sgoranov\IdentityLinkShared\Controller;
 
-use sgoranov\PHPIdentityLinkShared\Api\DTO\AbstractQueryRequest;
-use sgoranov\PHPIdentityLinkShared\Serializer\Deserializer;
+use sgoranov\IdentityLinkShared\Api\DTO\AbstractQueryRequest;
+use sgoranov\IdentityLinkShared\Serializer\Deserializer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Api\DTO;
+namespace sgoranov\IdentityLinkShared\Api\DTO;
 
 use Symfony\Component\Validator\Constraints as Assert;
 

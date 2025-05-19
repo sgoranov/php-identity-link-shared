@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace sgoranov\PHPIdentityLinkShared\Security;
+namespace sgoranov\IdentityLinkShared\Security;
 
 final class PasswordHashGenerator
 {
