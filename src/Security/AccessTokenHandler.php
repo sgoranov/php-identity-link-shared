@@ -109,12 +109,16 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
         }
 
         // Create user badge
-        return new UserBadge($identifier, function (string $userIdentifier, array $attribs): ?UserInterface {
+        return new UserBadge($identifier, function (string $userIdentifier, array $attribs)  use ($decoded): ?UserInterface {
             if (in_array($this->adminRole, $attribs['groups'], true)) {
-                return new User($userIdentifier, ['ROLE_ADMIN']);
+                $user = new User($userIdentifier, ['ROLE_ADMIN']);
             } else {
-                return new User($userIdentifier, []);
+                $user = new User($userIdentifier, []);
             }
+
+            $user->setAccessToken($decoded);
+
+            return $user;
         }, ['groups' => $groups]);
     }
 

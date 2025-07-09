@@ -7,6 +7,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 final class User implements UserInterface
 {
+    private object $accessToken;
 
     public function __construct(
         private readonly string $username,
@@ -29,5 +30,15 @@ final class User implements UserInterface
     public function getUserIdentifier(): string
     {
         return $this->username;
+    }
+
+    public function getAccessToken(): object
+    {
+        return $this->accessToken;
+    }
+
+    public function setAccessToken(object $accessToken): void
+    {
+        $this->accessToken = $accessToken;
     }
 }
