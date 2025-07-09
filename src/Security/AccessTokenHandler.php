@@ -5,6 +5,7 @@ namespace sgoranov\IdentityLinkShared\Security;
 
 use Firebase\JWT\CachedKeySet;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -16,9 +17,10 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 class AccessTokenHandler implements AccessTokenHandlerInterface
 {
     private string $uri;
-    private string $issuer;
-    private string $groupsClaim;
-    private string $adminRole;
+    private string $issuer = 'identity-link';
+    private string $groupsClaim = 'groups';
+    private string $adminRole = 'administrator';
+    private ?Key $jwtPublicKey = null;
 
     public function __construct(
         private readonly ClientInterface $client,
@@ -27,11 +29,28 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
     {
     }
 
-    public function setConfigurationParams(string $jwksUri, string $issuer, string $groupsClaim, string $adminRole): void
+    public function setJwtPublicKey(string $path, string $algorithm = 'RS256'): void
     {
-        $this->uri = $jwksUri;
+        $this->jwtPublicKey = new Key($path, $algorithm);
+    }
+
+    public function setUri(string $uri): void
+    {
+        $this->uri = $uri;
+    }
+
+    public function setIssuer(string $issuer): void
+    {
         $this->issuer = $issuer;
+    }
+
+    public function setGroupsClaim(string $groupsClaim): void
+    {
         $this->groupsClaim = $groupsClaim;
+    }
+
+    public function setAdminRole(string $adminRole): void
+    {
         $this->adminRole = $adminRole;
     }
 
@@ -71,29 +90,8 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
 
     public function getUserBadgeFrom(#[\SensitiveParameter] string $accessToken): UserBadge
     {
-        $cache = new FilesystemAdapter(
-            $namespace = 'JWKeySet',
-
-            // the default lifetime (in seconds) for cache items that do not define their
-            // own lifetime, with a value 0 causing items to be stored indefinitely (i.e.
-            // until the files are deleted)
-            $defaultLifetime = 3600,
-
-            // the main cache directory (the application needs read-write permissions on it)
-            // if none is specified, a directory is created inside the system temporary directory
-            $directory = null
-        );
-
-        $keySet = new CachedKeySet(
-            $this->uri,
-            $this->client,
-            $this->factory,
-            $cache,
-            null, // $expiresAfter int seconds to set the JWKS to expire
-            true  // $rateLimit    true to enable rate limit of 10 RPS on lookup of invalid keys
-        );
-
-        $decoded = $this->decode($accessToken, $keySet);
+        $key = $this->jwtPublicKey ?: $this->loadKeyFromJWKS();
+        $decoded = $this->decode($accessToken, $key);
 
         if (isset($decoded->iss) && $this->issuer !== $decoded->iss) {
             throw new BadCredentialsException('JWT iss is not valid.');
@@ -118,5 +116,30 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
                 return new User($userIdentifier, []);
             }
         }, ['groups' => $groups]);
+    }
+
+    private function loadKeyFromJWKS(): CachedKeySet
+    {
+        $cache = new FilesystemAdapter(
+            $namespace = 'JWKeySet',
+
+            // the default lifetime (in seconds) for cache items that do not define their
+            // own lifetime, with a value 0 causing items to be stored indefinitely (i.e.
+            // until the files are deleted)
+            $defaultLifetime = 3600,
+
+            // the main cache directory (the application needs read-write permissions on it)
+            // if none is specified, a directory is created inside the system temporary directory
+            $directory = null
+        );
+
+        return new CachedKeySet(
+            $this->uri,
+            $this->client,
+            $this->factory,
+            $cache,
+            null, // $expiresAfter int seconds to set the JWKS to expire
+            true  // $rateLimit    true to enable rate limit of 10 RPS on lookup of invalid keys
+        );
     }
 }
