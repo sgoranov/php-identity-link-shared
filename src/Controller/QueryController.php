@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace sgoranov\IdentityLinkShared\Controller;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\DBAL\ParameterType;
 use sgoranov\IdentityLinkShared\Api\DTO\AbstractQueryRequest;
 use sgoranov\IdentityLinkShared\Serializer\Deserializer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -38,8 +40,11 @@ class QueryController extends AbstractController
             $queryBuilder->where($request->getQuery());
         }
 
-        if ($request->getParameters() !== null) {
-            $queryBuilder->setParameters($request->getParameters());
+        $params = $request->getParameters();
+        if ($params !== null) {
+            foreach ($params as $name => $value) {
+                $queryBuilder->setParameter($name, $value, ParameterType::STRING);
+            }
         }
 
         if ($request->getJoins() !== null) {
