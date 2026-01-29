@@ -15,6 +15,8 @@ use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class RequestResponseLogger
 {
+    private const MAX_RESPONSE_LENGTH = 2000;
+
     public function __construct(
         private readonly LoggerInterface $logger
     )
@@ -51,7 +53,7 @@ class RequestResponseLogger
 
         $logData = $request->attributes->get('request_log', []);
         $logData['status'] = $response->getStatusCode();
-        $logData['response_body'] = $response->getContent();
+        $logData = array_merge($logData, $this->appendResponseData($response));
 
         $this->logger->info('REST API Log', $logData);
     }
@@ -67,7 +69,7 @@ class RequestResponseLogger
 
         if ($response instanceof Response) {
             $logData['status'] = $response->getStatusCode();
-            $logData['response_body'] = $response->getContent();
+            $logData = array_merge($logData, $this->appendResponseData($response));
         } else {
             if ($exception instanceof NotFoundHttpException) {
                 $logData['status'] = 404;
@@ -86,5 +88,38 @@ class RequestResponseLogger
         ];
 
         $this->logger->error('REST API Log', $logData);
+    }
+
+    private function appendResponseData(Response $response): array
+    {
+        $content = $response->getContent();
+        $content = is_string($content) ? $content : '';
+        $length = strlen($content);
+
+        $logData = [
+            'response_length' => $length,
+        ];
+
+        $contentType = strtolower((string) $response->headers->get('Content-Type', ''));
+        $contentType = trim(explode(';', $contentType, 2)[0]);
+
+        if ($this->isResponseBodyLoggable($contentType, $length)) {
+            $logData['response_body'] = $content;
+        }
+
+        return $logData;
+    }
+
+    private function isResponseBodyLoggable(string $contentType, int $length): bool
+    {
+        if ($contentType === '' || $length > self::MAX_RESPONSE_LENGTH) {
+            return false;
+        }
+
+        if (str_starts_with($contentType, 'application/json') || str_ends_with($contentType, '+json')) {
+            return true;
+        }
+
+        return false;
     }
 }
