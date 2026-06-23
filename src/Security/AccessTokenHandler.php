@@ -8,6 +8,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -25,6 +26,7 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
     public function __construct(
         private readonly ClientInterface $client,
         private readonly RequestFactoryInterface $factory,
+        private readonly LoggerInterface $logger,
     )
     {
     }
@@ -54,7 +56,7 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
         $this->adminRole = $adminRole;
     }
 
-    public static function decode($accessToken, $keySet): object
+    public function decode($accessToken, $keySet): object
     {
         try {
             $decoded = JWT::decode($accessToken, $keySet);
@@ -80,10 +82,24 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
             return $decoded;
 
         } catch (\LogicException $e) {
-            // errors having to do with environmental setup or malformed JWT Keys
+
+            $this->logger->critical('JWT Authentication is broken. Malformed keys or environment misconfiguration.', [
+                'exception' => $e,
+            ]);
             throw new BadCredentialsException('Invalid credentials.');
+
         } catch (\UnexpectedValueException $e) {
-            // errors having to do with JWT signature and claims
+
+            $this->logger->error('JWT validation failed. Token signature or claims are invalid.', [
+                'exception' => $e,
+            ]);
+            throw new BadCredentialsException('Invalid credentials.');
+
+        } catch (\OutOfBoundsException $e) {
+
+            $this->logger->error('Authentication failed. Token signed with an unknown key ID (kid).', [
+                'exception' => $e,
+            ]);
             throw new BadCredentialsException('Invalid credentials.');
         }
     }
