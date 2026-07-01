@@ -20,7 +20,7 @@ class DoctrineManyToManyNormalizer implements NormalizerInterface, DenormalizerI
     {
     }
 
-    public function denormalize(mixed $data, string $type, string $format = null, array $context = []): ArrayCollection
+    public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): ArrayCollection
     {
         $collection = new ArrayCollection();
         foreach ($data as $uuid) {
@@ -38,7 +38,7 @@ class DoctrineManyToManyNormalizer implements NormalizerInterface, DenormalizerI
         return $collection;
     }
 
-    public function supportsDenormalization(mixed $data, string $type, string $format = null, array $context = []): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null, array $context = []): bool
     {
         $supportedTypes = $this->getSupportedTypes($format);
         if (array_key_exists($type, $supportedTypes) && $supportedTypes[$type] && is_array($data)) {
@@ -49,7 +49,7 @@ class DoctrineManyToManyNormalizer implements NormalizerInterface, DenormalizerI
         return false;
     }
 
-    public function normalize(mixed $object, string $format = null, array $context = []): array
+    public function normalize(mixed $object, ?string $format = null, array $context = []): array
     {
         if (!($object instanceof PersistentCollection)) {
             throw new \Exception('Invalid data passed');
@@ -70,7 +70,7 @@ class DoctrineManyToManyNormalizer implements NormalizerInterface, DenormalizerI
         ];
     }
 
-    public function supportsNormalization(mixed $data, string $format = null, array $context = []): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         if ($data instanceof PersistentCollection) {
             return true;

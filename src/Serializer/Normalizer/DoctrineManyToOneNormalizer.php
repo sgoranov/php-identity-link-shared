@@ -17,7 +17,7 @@ class DoctrineManyToOneNormalizer implements NormalizerInterface, DenormalizerIn
     {
     }
 
-    public function denormalize(mixed $data, string $type, string $format = null, array $context = []): object
+    public function denormalize(mixed $data, string $type, ?string $format = null, array $context = []): object
     {
         $entity = $this->entityManager->find($type, $data);
 
@@ -31,7 +31,7 @@ class DoctrineManyToOneNormalizer implements NormalizerInterface, DenormalizerIn
         return $entity;
     }
 
-    public function supportsDenormalization(mixed $data, string $type, string $format = null, array $context = []): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null, array $context = []): bool
     {
         $supportedTypes = $this->getSupportedTypes($format);
         if (isset($supportedTypes[$type]) && $supportedTypes[$type] && !isset($context['object_to_populate'])) {
@@ -42,12 +42,12 @@ class DoctrineManyToOneNormalizer implements NormalizerInterface, DenormalizerIn
         return false;
     }
 
-    public function normalize(mixed $object, string $format = null, array $context = []): string
+    public function normalize(mixed $object, ?string $format = null, array $context = []): string
     {
         return $object->getId();
     }
 
-    public function supportsNormalization(mixed $data, string $format = null, array $context = []): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         $supportedTypes = $this->getSupportedTypes($format);
 
