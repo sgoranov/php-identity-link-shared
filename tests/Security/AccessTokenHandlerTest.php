@@ -1,0 +1,95 @@
+<?php
+declare(strict_types=1);
+
+namespace sgoranov\IdentityLinkShared\Tests\Security;
+
+use Firebase\JWT\Key;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Log\LoggerInterface;
+use sgoranov\IdentityLinkShared\Security\AccessTokenHandler;
+use sgoranov\IdentityLinkShared\Security\AccessTokenHandlerConfiguration;
+use Symfony\Component\Security\Core\Exception\BadCredentialsException;
+
+final class AccessTokenHandlerTest extends TestCase
+{
+    #[DataProvider('validAudienceProvider')]
+    public function testItAcceptsValidIssuerAndAudience(string|array $audience): void
+    {
+        $token = (object) [
+            'iss' => 'identity-link',
+            'aud' => $audience,
+            'sub' => 'user-id',
+            'groups' => ['administrator'],
+        ];
+
+        $badge = $this->createHandlerReturning($token)->getUserBadgeFrom('token');
+        $user = $badge->getUser();
+
+        self::assertSame('user-id', $badge->getUserIdentifier());
+        self::assertSame(['ROLE_ADMIN'], $user->getRoles());
+        self::assertSame($token, $user->getAccessToken());
+    }
+
+    public static function validAudienceProvider(): iterable
+    {
+        yield 'string audience' => ['identity-api'];
+        yield 'audience list' => [['another-api', 'identity-api']];
+    }
+
+    #[DataProvider('invalidClaimsProvider')]
+    public function testItRejectsInvalidIssuerOrAudience(object $token): void
+    {
+        $this->expectException(BadCredentialsException::class);
+
+        $this->createHandlerReturning($token)->getUserBadgeFrom('token');
+    }
+
+    public static function invalidClaimsProvider(): iterable
+    {
+        yield 'missing issuer' => [(object) ['aud' => 'identity-api']];
+        yield 'incorrect issuer' => [(object) ['iss' => 'another-issuer', 'aud' => 'identity-api']];
+        yield 'missing audience' => [(object) ['iss' => 'identity-link']];
+        yield 'incorrect audience' => [(object) ['iss' => 'identity-link', 'aud' => 'another-api']];
+        yield 'invalid audience type' => [(object) ['iss' => 'identity-link', 'aud' => 123]];
+    }
+
+    public function testItUsesConfiguredAudienceWhenSubjectIsMissing(): void
+    {
+        $token = (object) [
+            'iss' => 'identity-link',
+            'aud' => 'identity-api',
+        ];
+
+        $badge = $this->createHandlerReturning($token)->getUserBadgeFrom('token');
+
+        self::assertSame('identity-api', $badge->getUserIdentifier());
+        self::assertSame([], $badge->getUser()->getRoles());
+    }
+
+    private function createHandlerReturning(object $decodedToken): AccessTokenHandler&MockObject
+    {
+        $configuration = new AccessTokenHandlerConfiguration(
+            issuer: 'identity-link',
+            audience: 'identity-api',
+            publicKey: new Key('secret', 'HS256'),
+        );
+
+        $handler = $this->getMockBuilder(AccessTokenHandler::class)
+            ->setConstructorArgs([
+                $this->createStub(ClientInterface::class),
+                $this->createStub(RequestFactoryInterface::class),
+                $this->createStub(LoggerInterface::class),
+                $configuration,
+            ])
+            ->onlyMethods(['decode'])
+            ->getMock();
+
+        $handler->method('decode')->willReturn($decodedToken);
+
+        return $handler;
+    }
+}
