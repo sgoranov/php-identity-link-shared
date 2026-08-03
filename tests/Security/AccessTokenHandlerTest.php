@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace sgoranov\IdentityLinkShared\Tests\Security;
 
-use Firebase\JWT\Key;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -75,7 +74,7 @@ final class AccessTokenHandlerTest extends TestCase
         $configuration = new AccessTokenHandlerConfiguration(
             issuer: 'identity-link',
             audience: 'identity-api',
-            publicKey: new Key('secret', 'HS256'),
+            publicKeyPath: __DIR__.'/Fixtures/public-key.pem',
         );
 
         $handler = $this->getMockBuilder(AccessTokenHandler::class)

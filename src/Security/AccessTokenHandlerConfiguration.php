@@ -7,10 +7,12 @@ use Firebase\JWT\Key;
 
 final class AccessTokenHandlerConfiguration
 {
+    private readonly ?Key $publicKey;
+
     public function __construct(
         private readonly string $issuer,
         private readonly string $audience,
-        private readonly ?Key $publicKey = null,
+        ?string $publicKeyPath = null,
         private readonly ?string $jwksUri = null,
     )
     {
@@ -22,12 +24,27 @@ final class AccessTokenHandlerConfiguration
             throw new \InvalidArgumentException('The token audience must not be empty.');
         }
 
-        if (($this->publicKey === null) === ($this->jwksUri === null)) {
-            throw new \InvalidArgumentException('Configure exactly one of a public key or a JWKS URI.');
+        if (($publicKeyPath === null) === ($this->jwksUri === null)) {
+            throw new \InvalidArgumentException('Configure exactly one of a public key path or a JWKS URI.');
         }
 
         if ('' === $this->jwksUri) {
             throw new \InvalidArgumentException('The JWKS URI must not be empty.');
+        }
+
+        if (null === $publicKeyPath) {
+            $this->publicKey = null;
+        } else {
+            if (!is_file($publicKeyPath) || !is_readable($publicKeyPath)) {
+                throw new \InvalidArgumentException(sprintf('The public key file "%s" is not readable.', $publicKeyPath));
+            }
+
+            $publicKey = file_get_contents($publicKeyPath);
+            if (false === $publicKey || '' === $publicKey) {
+                throw new \InvalidArgumentException(sprintf('The public key file "%s" is empty or could not be read.', $publicKeyPath));
+            }
+
+            $this->publicKey = new Key($publicKey, 'RS256');
         }
     }
 
