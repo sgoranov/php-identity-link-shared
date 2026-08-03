@@ -5,7 +5,6 @@ namespace sgoranov\IdentityLinkShared\Security;
 
 use Firebase\JWT\CachedKeySet;
 use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Log\LoggerInterface;
@@ -17,43 +16,16 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
 class AccessTokenHandler implements AccessTokenHandlerInterface
 {
-    private string $uri;
-    private string $issuer = 'identity-link';
-    private string $groupsClaim = 'groups';
-    private string $adminRole = 'administrator';
-    private ?Key $jwtPublicKey = null;
+    private const GROUPS_CLAIM = 'groups';
+    private const ADMIN_ROLE = 'administrator';
 
     public function __construct(
         private readonly ClientInterface $client,
         private readonly RequestFactoryInterface $factory,
         private readonly LoggerInterface $logger,
+        private readonly AccessTokenHandlerConfiguration $configuration,
     )
     {
-    }
-
-    public function setJwtPublicKey(string $path, string $algorithm = 'RS256'): void
-    {
-        $this->jwtPublicKey = new Key($path, $algorithm);
-    }
-
-    public function setUri(string $uri): void
-    {
-        $this->uri = $uri;
-    }
-
-    public function setIssuer(string $issuer): void
-    {
-        $this->issuer = $issuer;
-    }
-
-    public function setGroupsClaim(string $groupsClaim): void
-    {
-        $this->groupsClaim = $groupsClaim;
-    }
-
-    public function setAdminRole(string $adminRole): void
-    {
-        $this->adminRole = $adminRole;
     }
 
     public function decode($accessToken, $keySet): object
@@ -106,27 +78,35 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
 
     public function getUserBadgeFrom(#[\SensitiveParameter] string $accessToken): UserBadge
     {
-        $key = $this->jwtPublicKey ?: $this->loadKeyFromJWKS();
+        $key = $this->configuration->getPublicKey() ?? $this->loadKeyFromJWKS();
         $decoded = $this->decode($accessToken, $key);
 
-        if (isset($decoded->iss) && $this->issuer !== $decoded->iss) {
+        if (!isset($decoded->iss) || $this->configuration->getIssuer() !== $decoded->iss) {
             throw new BadCredentialsException('JWT iss is not valid.');
         }
 
+        $audiences = isset($decoded->aud) && (is_string($decoded->aud) || is_array($decoded->aud))
+            ? (array) $decoded->aud
+            : [];
+
+        if (!in_array($this->configuration->getAudience(), $audiences, true)) {
+            throw new BadCredentialsException('JWT aud is not valid.');
+        }
+
         $groups = [];
-        if (isset($decoded->{$this->groupsClaim})) {
-            $groups = $decoded->{$this->groupsClaim};
+        if (isset($decoded->{self::GROUPS_CLAIM})) {
+            $groups = $decoded->{self::GROUPS_CLAIM};
         }
 
         if (!empty($decoded->sub)) {
             $identifier = $decoded->sub;
         } else {
-            $identifier = $decoded->aud;
+            $identifier = $this->configuration->getAudience();
         }
 
         // Create user badge
         return new UserBadge($identifier, function (string $userIdentifier, array $attribs)  use ($decoded): ?UserInterface {
-            if (in_array($this->adminRole, $attribs['groups'], true)) {
+            if (in_array(self::ADMIN_ROLE, $attribs['groups'], true)) {
                 $user = new User($userIdentifier, ['ROLE_ADMIN']);
             } else {
                 $user = new User($userIdentifier, []);
@@ -140,6 +120,11 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
 
     private function loadKeyFromJWKS(): CachedKeySet
     {
+        $jwksUri = $this->configuration->getJwksUri();
+        if (null === $jwksUri) {
+            throw new \LogicException('A JWKS URI is required when no public key is configured.');
+        }
+
         $cache = new FilesystemAdapter(
             $namespace = 'JWKeySet',
 
@@ -154,7 +139,7 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
         );
 
         return new CachedKeySet(
-            $this->uri,
+            $jwksUri,
             $this->client,
             $this->factory,
             $cache,
