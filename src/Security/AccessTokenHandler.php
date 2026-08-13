@@ -16,8 +16,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
 class AccessTokenHandler implements AccessTokenHandlerInterface
 {
-    private const GROUPS_CLAIM = 'groups';
-    private const ADMIN_ROLE = 'administrator';
+    private const SCOPE_CLAIM = 'scope';
 
     public function __construct(
         private readonly ClientInterface $client,
@@ -93,9 +92,9 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
             throw new BadCredentialsException('JWT aud is not valid.');
         }
 
-        $groups = [];
-        if (isset($decoded->{self::GROUPS_CLAIM})) {
-            $groups = $decoded->{self::GROUPS_CLAIM};
+        $scopes = [];
+        if (isset($decoded->{self::SCOPE_CLAIM})) {
+            $scopes = preg_split('/\s+/', trim($decoded->{self::SCOPE_CLAIM}), -1, PREG_SPLIT_NO_EMPTY);
         }
 
         if (!empty($decoded->sub)) {
@@ -106,16 +105,12 @@ class AccessTokenHandler implements AccessTokenHandlerInterface
 
         // Create user badge
         return new UserBadge($identifier, function (string $userIdentifier, array $attribs)  use ($decoded): ?UserInterface {
-            if (in_array(self::ADMIN_ROLE, $attribs['groups'], true)) {
-                $user = new User($userIdentifier, ['ROLE_ADMIN']);
-            } else {
-                $user = new User($userIdentifier, []);
-            }
+            $user = new User($userIdentifier, array_values(array_unique($attribs['scopes'])));
 
             $user->setAccessToken($decoded);
 
             return $user;
-        }, ['groups' => $groups]);
+        }, ['scopes' => $scopes]);
     }
 
     private function loadKeyFromJWKS(): CachedKeySet

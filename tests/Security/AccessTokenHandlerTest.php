@@ -22,14 +22,13 @@ final class AccessTokenHandlerTest extends TestCase
             'iss' => 'identity-link',
             'aud' => $audience,
             'sub' => 'user-id',
-            'groups' => ['administrator'],
         ];
 
         $badge = $this->createHandlerReturning($token)->getUserBadgeFrom('token');
         $user = $badge->getUser();
 
         self::assertSame('user-id', $badge->getUserIdentifier());
-        self::assertSame(['ROLE_ADMIN'], $user->getRoles());
+        self::assertSame([], $user->getRoles());
         self::assertSame($token, $user->getAccessToken());
     }
 
@@ -67,6 +66,29 @@ final class AccessTokenHandlerTest extends TestCase
 
         self::assertSame('identity-api', $badge->getUserIdentifier());
         self::assertSame([], $badge->getUser()->getRoles());
+    }
+
+    #[DataProvider('scopeProvider')]
+    public function testItAddsEveryScopeAsARole(string $scope, array $expectedRoles): void
+    {
+        $token = (object) [
+            'iss' => 'identity-link',
+            'aud' => 'identity-api',
+            'scope' => $scope,
+        ];
+
+        $user = $this->createHandlerReturning($token)->getUserBadgeFrom('token')->getUser();
+
+        self::assertSame($expectedRoles, $user->getRoles());
+    }
+
+    public static function scopeProvider(): iterable
+    {
+        yield 'space-delimited scope claim' => ['read write', ['read', 'write']];
+        yield 'extra whitespace' => [' read  write ', ['read', 'write']];
+        yield 'duplicate scopes' => ['read read', ['read']];
+        yield 'empty scope' => ['', []];
+        yield 'spaces-only scope' => ['   ', []];
     }
 
     private function createHandlerReturning(object $decodedToken): AccessTokenHandler&MockObject
